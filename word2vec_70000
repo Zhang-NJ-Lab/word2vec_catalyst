@@ -1,0 +1,69 @@
+import gensim
+import numpy as np
+import pandas as pd
+from nltk.tokenize import word_tokenize
+from nltk.corpus import stopwords
+from gensim.models import Word2Vec
+import re
+import matplotlib.pyplot as plt
+from sklearn.manifold import TSNE
+import nltk
+
+# 如果第一次运行需要下载NLTK的数据
+nltk.download('punkt')
+nltk.download('stopwords')
+
+# 读取文本数据
+with open('springer_abstracts.txt', 'r', encoding='utf-8') as file:
+    raw_text = file.read()
+
+# 按句子分割文本
+sentences = re.split(r' *[\.\?!][\'"\)\]]* *', raw_text)
+sentences = [sentence for sentence in sentences if sentence.strip()]  # 去除空白句子
+
+# 分词和预处理
+stop_words = set(stopwords.words("english"))
+tokenized_sentences = [word_tokenize(sentence.lower()) for sentence in sentences]
+filtered_sentences = [[word for word in sentence if word not in stop_words and word.isalpha()] for sentence in tokenized_sentences]
+
+# 训练 Word2Vec 模型
+model = Word2Vec(filtered_sentences, vector_size=100, window=5, min_count=1, workers=4)
+
+# 创建单词嵌入向量
+word_vectors = model.wv
+word_vectors.save("word2vec_token_tsne.model")
+
+# 使用 t-SNE 降维
+tsne = TSNE(n_components=2, perplexity=30, n_iter=1000, random_state=42)
+vectors = np.array([word_vectors[word] for word in word_vectors.index_to_key])
+tsne_result = tsne.fit_transform(vectors)
+
+# 提取关键词的 t-SNE 结果以及它们的标签，用于可视化
+tsne_df = pd.DataFrame(tsne_result, columns=['x', 'y'])
+tsne_df['word'] = word_vectors.index_to_key
+
+# 创建可视化
+plt.figure(figsize=(12, 12))
+plt.scatter(tsne_df['x'], tsne_df['y'], s=3)
+plt.title('t-SNE Visualization of Word Embeddings')
+plt.xlabel('t-SNE Dimension 1')
+plt.ylabel('t-SNE Dimension 2')
+
+# 标记特定的关键词，如 "Si" 和 "GaAs"
+keywords = ['Ferrum', 'iridium']  # 转化为小写
+for keyword in keywords:
+    if keyword in tsne_df['word'].values:
+        coords = tsne_df.loc[tsne_df['word'] == keyword]
+        plt.scatter(coords['x'], coords['y'], label=keyword, s=50)
+
+plt.legend()
+plt.show()
+
+import gensim
+import numpy as np
+import pandas as pd
+from nltk.tokenize import word_tokenize
+from nltk.corpus import stopwords
+from gensim.models import Word2Vec
+import re
+import matplotlib
